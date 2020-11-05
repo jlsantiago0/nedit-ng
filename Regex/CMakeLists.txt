@@ -19,6 +19,8 @@ set(SOURCES
 	Substitute.h
 	Reader.cpp
 	Reader.h
+	Decompile.cpp
+	Decompile.h
 )
 
 if(NEDIT_INCLUDE_DECOMPILER)

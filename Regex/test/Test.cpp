@@ -773,10 +773,10 @@ int main() {
 		return -1;
 	}
 
-#if 0 // testing "catastrophic backtracking" 
+#if 0 // testing "catastrophic backtracking"
     if (test_regex_match(R"((\\?.)*\\\n)", R"(Ada:Default\n\tAwk:Default\n\tC++:Default\n\tC:Default\n\tCSS:Default\n\tCsh:Default\n\tFortran:Default\n\tJava:Default\n\tJavaScript:Default\n\tLaTeX:Default\n\tLex:Default\n\tMakefile:Default\n\tMatlab:Default\n\tNEdit Macro:Default\n\tPascal:Default\n\tPerl:Default\n\tPostScript:Default\n\tPython:Default\n\tRegex:Default\n\tSGML HTML:Default\n\tSQL:Default\n\tSh Ksh Bash:Default\n\tTcl:Default\n\tVHDL:Default\n\tVerilog:Default\n\tXML:Default\n\tX Resources:Default\n\tYacc:Default)") != 0) {
 		std::cerr << "ERROR    : Failed to X resources match" << std::endl;
-		return -1;    
+		return -1;
     }
 #endif
 
@@ -790,7 +790,18 @@ int main() {
 			return -1;
 		}
 	}
+#endif
 
+#if 1
+
+		std::string regex = "<(AAA|BBB|CCC)>";;
+		std::cout << regex << std::endl << std::endl;
+		Regex re(regex, REDFLT_STANDARD);
+		std::vector<Instruction *> insts = decompileRegex(re);
+		for(Instruction *inst : insts) {
+			inst->print();
+			delete inst;
+		}
 #endif
 	std::cout << "SUCCESS\n";
 }

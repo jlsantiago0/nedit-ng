@@ -14,8 +14,8 @@ constexpr uint16_t make_uint16(uint8_t hi, uint16_t lo) {
 
 }
 
-std::vector<Instruction> decompileRegex(const Regex &re) {
-	std::vector<Instruction> results;
+std::vector<Instruction *> decompileRegex(const Regex &re) {
+	std::vector<Instruction *> results;
 
 	if (!re.isValid()) {
 		return results;
@@ -27,14 +27,20 @@ std::vector<Instruction> decompileRegex(const Regex &re) {
 
 	auto it = re.program.begin();
 
-	++it;                   // skip magic byte
+	uint8_t magic  = *it++; // read magic byte
 	uint8_t parens = *it++; // read paren count
 	uint8_t braces = *it++; // read the braces
 
+	(void)magic;
 	(void)parens;
 	(void)braces;
 
+	auto start = it;
+
 	while (it != re.program.end()) {
+
+		size_t curr = std::distance(start, it);
+
 		uint8_t opcode = *it++;
 		switch (opcode) {
 		case END: {
@@ -43,7 +49,7 @@ std::vector<Instruction> decompileRegex(const Regex &re) {
 			uint8_t offset_hi = *it++;
 			uint8_t offset_lo = *it++;
 
-			results.emplace_back(Instruction1{static_cast<Opcode>(opcode), make_int16(offset_hi, offset_lo)});
+			results.emplace_back(new InstructionEnd{curr, opcode, make_int16(offset_hi, offset_lo)});
 			break;
 		}
 		case BOL: {
@@ -52,7 +58,7 @@ std::vector<Instruction> decompileRegex(const Regex &re) {
 			uint8_t offset_hi = *it++;
 			uint8_t offset_lo = *it++;
 
-			results.emplace_back(Instruction1{static_cast<Opcode>(opcode), make_int16(offset_hi, offset_lo)});
+			results.emplace_back(new InstructionBol{curr, opcode, make_int16(offset_hi, offset_lo)});
 			break;
 		}
 		case EOL: {
@@ -61,7 +67,7 @@ std::vector<Instruction> decompileRegex(const Regex &re) {
 			uint8_t offset_hi = *it++;
 			uint8_t offset_lo = *it++;
 
-			results.emplace_back(Instruction1{static_cast<Opcode>(opcode), make_int16(offset_hi, offset_lo)});
+			results.emplace_back(new InstructionEol{curr, opcode, make_int16(offset_hi, offset_lo)});
 			break;
 		}
 		case BOWORD: {
@@ -70,7 +76,7 @@ std::vector<Instruction> decompileRegex(const Regex &re) {
 			uint8_t offset_hi = *it++;
 			uint8_t offset_lo = *it++;
 
-			results.emplace_back(Instruction1{static_cast<Opcode>(opcode), make_int16(offset_hi, offset_lo)});
+			results.emplace_back(new InstructionBoWord{curr, opcode, make_int16(offset_hi, offset_lo)});
 			break;
 		}
 		case EOWORD: {
@@ -79,16 +85,7 @@ std::vector<Instruction> decompileRegex(const Regex &re) {
 			uint8_t offset_hi = *it++;
 			uint8_t offset_lo = *it++;
 
-			results.emplace_back(Instruction1{static_cast<Opcode>(opcode), make_int16(offset_hi, offset_lo)});
-			break;
-		}
-		case NOT_BOUNDARY: {
-			/* 06 */
-
-			uint8_t offset_hi = *it++;
-			uint8_t offset_lo = *it++;
-
-			results.emplace_back(Instruction1{static_cast<Opcode>(opcode), make_int16(offset_hi, offset_lo)});
+			results.emplace_back(new InstructionEoWord{curr, opcode, make_int16(offset_hi, offset_lo)});
 			break;
 		}
 		case EXACTLY: {
@@ -103,7 +100,7 @@ std::vector<Instruction> decompileRegex(const Regex &re) {
 			}
 			++it;
 
-			results.emplace_back(Instruction2{static_cast<Opcode>(opcode), make_int16(offset_hi, offset_lo), set});
+			results.emplace_back(new InstructionExactly{curr, opcode, make_int16(offset_hi, offset_lo), set});
 			break;
 		}
 		case SIMILAR: {
@@ -118,7 +115,7 @@ std::vector<Instruction> decompileRegex(const Regex &re) {
 			}
 			++it;
 
-			results.emplace_back(Instruction2{static_cast<Opcode>(opcode), make_int16(offset_hi, offset_lo), set});
+			results.emplace_back(new InstructionSimilar{curr, opcode, make_int16(offset_hi, offset_lo), set});
 			break;
 		}
 		case ANY_OF: {
@@ -133,7 +130,7 @@ std::vector<Instruction> decompileRegex(const Regex &re) {
 			}
 			++it;
 
-			results.emplace_back(Instruction2{static_cast<Opcode>(opcode), make_int16(offset_hi, offset_lo), set});
+			results.emplace_back(new InstructionAnyOf{curr, opcode, make_int16(offset_hi, offset_lo), set});
 			break;
 		}
 		case ANY_BUT: {
@@ -148,7 +145,7 @@ std::vector<Instruction> decompileRegex(const Regex &re) {
 			}
 			++it;
 
-			results.emplace_back(Instruction2{static_cast<Opcode>(opcode), make_int16(offset_hi, offset_lo), set});
+			results.emplace_back(new InstructionAnyBut{curr, opcode, make_int16(offset_hi, offset_lo), set});
 			break;
 		}
 		case ANY: {
@@ -157,16 +154,7 @@ std::vector<Instruction> decompileRegex(const Regex &re) {
 			uint8_t offset_hi = *it++;
 			uint8_t offset_lo = *it++;
 
-			results.emplace_back(Instruction1{static_cast<Opcode>(opcode), make_int16(offset_hi, offset_lo)});
-			break;
-		}
-		case EVERY: {
-			/* 12 */
-
-			uint8_t offset_hi = *it++;
-			uint8_t offset_lo = *it++;
-
-			results.emplace_back(Instruction1{static_cast<Opcode>(opcode), make_int16(offset_hi, offset_lo)});
+			results.emplace_back(new InstructionAny{curr, opcode, make_int16(offset_hi, offset_lo)});
 			break;
 		}
 		case DIGIT: {
@@ -175,16 +163,7 @@ std::vector<Instruction> decompileRegex(const Regex &re) {
 			uint8_t offset_hi = *it++;
 			uint8_t offset_lo = *it++;
 
-			results.emplace_back(Instruction1{static_cast<Opcode>(opcode), make_int16(offset_hi, offset_lo)});
-			break;
-		}
-		case NOT_DIGIT: {
-			/* 14 */
-
-			uint8_t offset_hi = *it++;
-			uint8_t offset_lo = *it++;
-
-			results.emplace_back(Instruction1{static_cast<Opcode>(opcode), make_int16(offset_hi, offset_lo)});
+			results.emplace_back(new InstructionDigit{curr, opcode, make_int16(offset_hi, offset_lo)});
 			break;
 		}
 		case LETTER: {
@@ -193,16 +172,7 @@ std::vector<Instruction> decompileRegex(const Regex &re) {
 			uint8_t offset_hi = *it++;
 			uint8_t offset_lo = *it++;
 
-			results.emplace_back(Instruction1{static_cast<Opcode>(opcode), make_int16(offset_hi, offset_lo)});
-			break;
-		}
-		case NOT_LETTER: {
-			/* 16 */
-
-			uint8_t offset_hi = *it++;
-			uint8_t offset_lo = *it++;
-
-			results.emplace_back(Instruction1{static_cast<Opcode>(opcode), make_int16(offset_hi, offset_lo)});
+			results.emplace_back(new InstructionLetter{curr, opcode, make_int16(offset_hi, offset_lo)});
 			break;
 		}
 		case SPACE: {
@@ -211,7 +181,7 @@ std::vector<Instruction> decompileRegex(const Regex &re) {
 			uint8_t offset_hi = *it++;
 			uint8_t offset_lo = *it++;
 
-			results.emplace_back(Instruction1{static_cast<Opcode>(opcode), make_int16(offset_hi, offset_lo)});
+			results.emplace_back(new InstructionSpace{curr, opcode, make_int16(offset_hi, offset_lo)});
 			break;
 		}
 		case SPACE_NL: {
@@ -220,7 +190,7 @@ std::vector<Instruction> decompileRegex(const Regex &re) {
 			uint8_t offset_hi = *it++;
 			uint8_t offset_lo = *it++;
 
-			results.emplace_back(Instruction1{static_cast<Opcode>(opcode), make_int16(offset_hi, offset_lo)});
+			results.emplace_back(new InstructionSpaceNL{curr, opcode, make_int16(offset_hi, offset_lo)});
 			break;
 		}
 		case NOT_SPACE: {
@@ -229,16 +199,7 @@ std::vector<Instruction> decompileRegex(const Regex &re) {
 			uint8_t offset_hi = *it++;
 			uint8_t offset_lo = *it++;
 
-			results.emplace_back(Instruction1{static_cast<Opcode>(opcode), make_int16(offset_hi, offset_lo)});
-			break;
-		}
-		case NOT_SPACE_NL: {
-			/* 20 */
-
-			uint8_t offset_hi = *it++;
-			uint8_t offset_lo = *it++;
-
-			results.emplace_back(Instruction1{static_cast<Opcode>(opcode), make_int16(offset_hi, offset_lo)});
+			results.emplace_back(new InstructionNotSpace{curr, opcode, make_int16(offset_hi, offset_lo)});
 			break;
 		}
 		case WORD_CHAR: {
@@ -247,25 +208,7 @@ std::vector<Instruction> decompileRegex(const Regex &re) {
 			uint8_t offset_hi = *it++;
 			uint8_t offset_lo = *it++;
 
-			results.emplace_back(Instruction1{static_cast<Opcode>(opcode), make_int16(offset_hi, offset_lo)});
-			break;
-		}
-		case NOT_WORD_CHAR: {
-			/* 22 */
-
-			uint8_t offset_hi = *it++;
-			uint8_t offset_lo = *it++;
-
-			results.emplace_back(Instruction1{static_cast<Opcode>(opcode), make_int16(offset_hi, offset_lo)});
-			break;
-		}
-		case IS_DELIM: {
-			/* 23 */
-
-			uint8_t offset_hi = *it++;
-			uint8_t offset_lo = *it++;
-
-			results.emplace_back(Instruction1{static_cast<Opcode>(opcode), make_int16(offset_hi, offset_lo)});
+			results.emplace_back(new InstructionWordChar{curr, opcode, make_int16(offset_hi, offset_lo)});
 			break;
 		}
 		case NOT_DELIM: {
@@ -274,7 +217,7 @@ std::vector<Instruction> decompileRegex(const Regex &re) {
 			uint8_t offset_hi = *it++;
 			uint8_t offset_lo = *it++;
 
-			results.emplace_back(Instruction1{static_cast<Opcode>(opcode), make_int16(offset_hi, offset_lo)});
+			results.emplace_back(new InstructionNotDelim{curr, opcode, make_int16(offset_hi, offset_lo)});
 			break;
 		}
 		case STAR: {
@@ -283,7 +226,7 @@ std::vector<Instruction> decompileRegex(const Regex &re) {
 			uint8_t offset_hi = *it++;
 			uint8_t offset_lo = *it++;
 
-			results.emplace_back(Instruction1{static_cast<Opcode>(opcode), make_int16(offset_hi, offset_lo)});
+			results.emplace_back(new InstructionStar{curr, opcode, make_int16(offset_hi, offset_lo)});
 			break;
 		}
 		case LAZY_STAR: {
@@ -292,7 +235,7 @@ std::vector<Instruction> decompileRegex(const Regex &re) {
 			uint8_t offset_hi = *it++;
 			uint8_t offset_lo = *it++;
 
-			results.emplace_back(Instruction1{static_cast<Opcode>(opcode), make_int16(offset_hi, offset_lo)});
+			results.emplace_back(new InstructionLazyStar{curr, opcode, make_int16(offset_hi, offset_lo)});
 			break;
 		}
 		case QUESTION: {
@@ -301,16 +244,7 @@ std::vector<Instruction> decompileRegex(const Regex &re) {
 			uint8_t offset_hi = *it++;
 			uint8_t offset_lo = *it++;
 
-			results.emplace_back(Instruction1{static_cast<Opcode>(opcode), make_int16(offset_hi, offset_lo)});
-			break;
-		}
-		case LAZY_QUESTION: {
-			/* 28 */
-
-			uint8_t offset_hi = *it++;
-			uint8_t offset_lo = *it++;
-
-			results.emplace_back(Instruction1{static_cast<Opcode>(opcode), make_int16(offset_hi, offset_lo)});
+			results.emplace_back(new InstructionQuestion{curr, opcode, make_int16(offset_hi, offset_lo)});
 			break;
 		}
 		case PLUS: {
@@ -319,16 +253,7 @@ std::vector<Instruction> decompileRegex(const Regex &re) {
 			uint8_t offset_hi = *it++;
 			uint8_t offset_lo = *it++;
 
-			results.emplace_back(Instruction1{static_cast<Opcode>(opcode), make_int16(offset_hi, offset_lo)});
-			break;
-		}
-		case LAZY_PLUS: {
-			/* 30 */
-
-			uint8_t offset_hi = *it++;
-			uint8_t offset_lo = *it++;
-
-			results.emplace_back(Instruction1{static_cast<Opcode>(opcode), make_int16(offset_hi, offset_lo)});
+			results.emplace_back(new InstructionPlus{curr, opcode, make_int16(offset_hi, offset_lo)});
 			break;
 		}
 		case BRACE: {
@@ -343,22 +268,7 @@ std::vector<Instruction> decompileRegex(const Regex &re) {
 			int16_t max_hi = *it++;
 			int16_t max_lo = *it++;
 
-			results.emplace_back(Instruction3{static_cast<Opcode>(opcode), make_int16(offset_hi, offset_lo), make_uint16(min_hi, min_lo), make_uint16(max_hi, max_lo)});
-			break;
-		}
-		case LAZY_BRACE: {
-			/* 32 */
-
-			uint8_t offset_hi = *it++;
-			uint8_t offset_lo = *it++;
-
-			int16_t min_hi = *it++;
-			int16_t min_lo = *it++;
-
-			int16_t max_hi = *it++;
-			int16_t max_lo = *it++;
-
-			results.emplace_back(Instruction3{static_cast<Opcode>(opcode), make_int16(offset_hi, offset_lo), make_uint16(min_hi, min_lo), make_uint16(max_hi, max_lo)});
+			results.emplace_back(new InstructionBrace{curr, opcode, make_int16(offset_hi, offset_lo), make_uint16(min_hi, min_lo), make_uint16(max_hi, max_lo)});
 			break;
 		}
 		case NOTHING: {
@@ -367,16 +277,15 @@ std::vector<Instruction> decompileRegex(const Regex &re) {
 			uint8_t offset_hi = *it++;
 			uint8_t offset_lo = *it++;
 
-			results.emplace_back(Instruction1{static_cast<Opcode>(opcode), make_int16(offset_hi, offset_lo)});
+			results.emplace_back(new InstructionNothing{curr, opcode, make_int16(offset_hi, offset_lo)});
 			break;
 		}
 		case BRANCH: {
 			/* 34 */
-
 			uint8_t offset_hi = *it++;
 			uint8_t offset_lo = *it++;
 
-			results.emplace_back(Instruction1{static_cast<Opcode>(opcode), make_int16(offset_hi, offset_lo)});
+			results.emplace_back(new InstructionBranch{curr, opcode, make_int16(offset_hi, offset_lo)});
 			break;
 		}
 		case BACK: {
@@ -385,7 +294,7 @@ std::vector<Instruction> decompileRegex(const Regex &re) {
 			uint8_t offset_hi = *it++;
 			uint8_t offset_lo = *it++;
 
-			results.emplace_back(Instruction1{static_cast<Opcode>(opcode), make_int16(offset_hi, offset_lo)});
+			results.emplace_back(new InstructionBack{curr, opcode, make_int16(offset_hi, offset_lo)});
 			break;
 		}
 		case INIT_COUNT: {
@@ -395,7 +304,7 @@ std::vector<Instruction> decompileRegex(const Regex &re) {
 			uint8_t offset_lo = *it++;
 			uint8_t operand   = *it++;
 
-			results.emplace_back(Instruction4{static_cast<Opcode>(opcode), make_int16(offset_hi, offset_lo), operand});
+			results.emplace_back(new InstructionInitCount{curr, opcode, make_int16(offset_hi, offset_lo), operand});
 			break;
 		}
 		case INC_COUNT: {
@@ -405,7 +314,7 @@ std::vector<Instruction> decompileRegex(const Regex &re) {
 			uint8_t offset_lo = *it++;
 			uint8_t operand   = *it++;
 
-			results.emplace_back(Instruction4{static_cast<Opcode>(opcode), make_int16(offset_hi, offset_lo), operand});
+			results.emplace_back(new InstructionIncCount{curr, opcode, make_int16(offset_hi, offset_lo), operand});
 			break;
 		}
 		case TEST_COUNT: {
@@ -417,7 +326,7 @@ std::vector<Instruction> decompileRegex(const Regex &re) {
 			uint8_t test_hi   = *it++;
 			uint8_t test_lo   = *it++;
 
-			results.emplace_back(Instruction5{static_cast<Opcode>(opcode), make_int16(offset_hi, offset_lo), index, make_uint16(test_hi, test_lo)});
+			results.emplace_back(new InstructionTestCount{curr, opcode, make_int16(offset_hi, offset_lo), index, make_uint16(test_hi, test_lo)});
 			break;
 		}
 		case BACK_REF: {
@@ -427,17 +336,7 @@ std::vector<Instruction> decompileRegex(const Regex &re) {
 			uint8_t offset_lo = *it++;
 			uint8_t index     = *it++;
 
-			results.emplace_back(Instruction4{static_cast<Opcode>(opcode), make_int16(offset_hi, offset_lo), index});
-			break;
-		}
-		case BACK_REF_CI: {
-			/* 40 */
-
-			uint8_t offset_hi = *it++;
-			uint8_t offset_lo = *it++;
-			uint8_t index     = *it++;
-
-			results.emplace_back(Instruction4{static_cast<Opcode>(opcode), make_int16(offset_hi, offset_lo), index});
+			results.emplace_back(new InstructionBackRef{curr, opcode, make_int16(offset_hi, offset_lo), index});
 			break;
 		}
 		case X_REGEX_BR:
@@ -451,7 +350,7 @@ std::vector<Instruction> decompileRegex(const Regex &re) {
 			uint8_t offset_hi = *it++;
 			uint8_t offset_lo = *it++;
 
-			results.emplace_back(Instruction1{static_cast<Opcode>(opcode), make_int16(offset_hi, offset_lo)});
+			results.emplace_back(new InstructionPosAheadOpen{curr, opcode, make_int16(offset_hi, offset_lo)});
 			break;
 		}
 		case NEG_AHEAD_OPEN: {
@@ -460,7 +359,7 @@ std::vector<Instruction> decompileRegex(const Regex &re) {
 			uint8_t offset_hi = *it++;
 			uint8_t offset_lo = *it++;
 
-			results.emplace_back(Instruction1{static_cast<Opcode>(opcode), make_int16(offset_hi, offset_lo)});
+			results.emplace_back(new InstructionNegAheadOpen{curr, opcode, make_int16(offset_hi, offset_lo)});
 			break;
 		}
 		case LOOK_AHEAD_CLOSE: {
@@ -469,7 +368,7 @@ std::vector<Instruction> decompileRegex(const Regex &re) {
 			uint8_t offset_hi = *it++;
 			uint8_t offset_lo = *it++;
 
-			results.emplace_back(Instruction1{static_cast<Opcode>(opcode), make_int16(offset_hi, offset_lo)});
+			results.emplace_back(new InstructionLookAheadClose{curr, opcode, make_int16(offset_hi, offset_lo)});
 			break;
 		}
 		case POS_BEHIND_OPEN: {
@@ -482,7 +381,7 @@ std::vector<Instruction> decompileRegex(const Regex &re) {
 			uint8_t op2_hi    = *it++;
 			uint8_t op2_lo    = *it++;
 
-			results.emplace_back(Instruction6{static_cast<Opcode>(opcode), make_int16(offset_hi, offset_lo), make_uint16(op1_hi, op1_lo), make_uint16(op2_hi, op2_lo)});
+			results.emplace_back(new InstructionPosBehindOpen{curr, opcode, make_int16(offset_hi, offset_lo), make_uint16(op1_hi, op1_lo), make_uint16(op2_hi, op2_lo)});
 			break;
 		}
 		case NEG_BEHIND_OPEN: {
@@ -495,7 +394,7 @@ std::vector<Instruction> decompileRegex(const Regex &re) {
 			uint8_t op2_hi    = *it++;
 			uint8_t op2_lo    = *it++;
 
-			results.emplace_back(Instruction6{static_cast<Opcode>(opcode), make_int16(offset_hi, offset_lo), make_uint16(op1_hi, op1_lo), make_uint16(op2_hi, op2_lo)});
+			results.emplace_back(new InstructionNegBehindOpen{curr, opcode, make_int16(offset_hi, offset_lo), make_uint16(op1_hi, op1_lo), make_uint16(op2_hi, op2_lo)});
 			break;
 		}
 		case LOOK_BEHIND_CLOSE: {
@@ -504,7 +403,7 @@ std::vector<Instruction> decompileRegex(const Regex &re) {
 			uint8_t offset_hi = *it++;
 			uint8_t offset_lo = *it++;
 
-			results.emplace_back(Instruction1{static_cast<Opcode>(opcode), make_int16(offset_hi, offset_lo)});
+			results.emplace_back(new InstructionNegBehindClose{curr, opcode, make_int16(offset_hi, offset_lo)});
 			break;
 		}
 		case OPEN:
@@ -562,7 +461,7 @@ std::vector<Instruction> decompileRegex(const Regex &re) {
 			uint8_t offset_hi = *it++;
 			uint8_t offset_lo = *it++;
 
-			results.emplace_back(Instruction1{static_cast<Opcode>(opcode), make_int16(offset_hi, offset_lo)});
+			results.emplace_back(new InstructionOpen{curr, opcode, make_int16(offset_hi, offset_lo)});
 			break;
 		}
 		case CLOSE:
@@ -620,10 +519,120 @@ std::vector<Instruction> decompileRegex(const Regex &re) {
 			uint8_t offset_hi = *it++;
 			uint8_t offset_lo = *it++;
 
-			results.emplace_back(Instruction1{static_cast<Opcode>(opcode), make_int16(offset_hi, offset_lo)});
+			results.emplace_back(new InstructionClose{curr, opcode, make_int16(offset_hi, offset_lo)});
 			break;
 		}
+#if 0
+		case NOT_BOUNDARY: {
+			/* 06 */
+
+			uint8_t offset_hi = *it++;
+			uint8_t offset_lo = *it++;
+
+			results.emplace_back(Instruction1{curr, opcode, make_int16(offset_hi, offset_lo)});
+			break;
+		}
+		case EVERY: {
+			/* 12 */
+
+			uint8_t offset_hi = *it++;
+			uint8_t offset_lo = *it++;
+
+			results.emplace_back(Instruction1{curr, opcode, make_int16(offset_hi, offset_lo)});
+			break;
+		}
+		case NOT_DIGIT: {
+			/* 14 */
+
+			uint8_t offset_hi = *it++;
+			uint8_t offset_lo = *it++;
+
+			results.emplace_back(Instruction1{curr, opcode, make_int16(offset_hi, offset_lo)});
+			break;
+		}
+		case NOT_LETTER: {
+			/* 16 */
+
+			uint8_t offset_hi = *it++;
+			uint8_t offset_lo = *it++;
+
+			results.emplace_back(Instruction1{curr, opcode, make_int16(offset_hi, offset_lo)});
+			break;
+		}
+		case NOT_SPACE_NL: {
+			/* 20 */
+
+			uint8_t offset_hi = *it++;
+			uint8_t offset_lo = *it++;
+
+			results.emplace_back(Instruction1{curr, opcode, make_int16(offset_hi, offset_lo)});
+			break;
+		}
+		case NOT_WORD_CHAR: {
+			/* 22 */
+
+			uint8_t offset_hi = *it++;
+			uint8_t offset_lo = *it++;
+
+			results.emplace_back(Instruction1{curr, opcode, make_int16(offset_hi, offset_lo)});
+			break;
+		}
+		case IS_DELIM: {
+			/* 23 */
+
+			uint8_t offset_hi = *it++;
+			uint8_t offset_lo = *it++;
+
+			results.emplace_back(Instruction1{curr, opcode, make_int16(offset_hi, offset_lo)});
+			break;
+		}
+		case LAZY_QUESTION: {
+			/* 28 */
+
+			uint8_t offset_hi = *it++;
+			uint8_t offset_lo = *it++;
+
+			results.emplace_back(Instruction1{curr, opcode, make_int16(offset_hi, offset_lo)});
+			break;
+		}
+		case LAZY_PLUS: {
+			/* 30 */
+
+			uint8_t offset_hi = *it++;
+			uint8_t offset_lo = *it++;
+
+			results.emplace_back(Instruction1{curr, opcode, make_int16(offset_hi, offset_lo)});
+			break;
+		}
+		case LAZY_BRACE: {
+			/* 32 */
+
+			uint8_t offset_hi = *it++;
+			uint8_t offset_lo = *it++;
+
+			int16_t min_hi = *it++;
+			int16_t min_lo = *it++;
+
+			int16_t max_hi = *it++;
+			int16_t max_lo = *it++;
+
+			results.emplace_back(Instruction3{curr, opcode, make_int16(offset_hi, offset_lo), make_uint16(min_hi, min_lo), make_uint16(max_hi, max_lo)});
+			break;
+		}
+		case BACK_REF_CI: {
+			/* 40 */
+
+			uint8_t offset_hi = *it++;
+			uint8_t offset_lo = *it++;
+			uint8_t index     = *it++;
+
+			results.emplace_back(Instruction4{curr, opcode, make_int16(offset_hi, offset_lo), index});
+			break;
+		}
+
+#endif
 		default:
+			printf("Opcode = %d\n", opcode);
 			assert(0);
 		}
 	}

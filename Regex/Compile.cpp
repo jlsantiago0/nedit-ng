@@ -643,7 +643,6 @@ uint8_t *atom(int *flag_param, len_range *range_param) {
 
 	while (pContext.Input.match("(?#")) {
 
-
 		pContext.Input.read_until(')');
 
 		if (pContext.Input.eof() || pContext.Input.peek() == ')' || pContext.Input.peek() == '|') {

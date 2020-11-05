@@ -199,7 +199,6 @@ R numeric_escape(Ch ch, const char **parse) {
 
 		if (value > 255) {
 			// Back out calculations for last digit processed.
-
 			value -= digit_val[pos];
 			value /= radix;
 
@@ -222,7 +221,6 @@ R numeric_escape(Ch ch, const char **parse) {
 		}
 	} else {
 		// Point to the last character of the number on success.
-
 		scan--;
 		*parse = scan;
 	}

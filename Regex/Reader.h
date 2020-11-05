@@ -13,7 +13,6 @@ public:
 	Reader(const Reader &) = default;
 	Reader& operator=(const Reader &) = default;
 
-
 public:
 	bool eof() const;
 	char peek() const;
