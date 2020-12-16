@@ -510,7 +510,6 @@ TextArea::TextArea(DocumentWidget *document, TextBuffer *buffer, const QFont &fo
 
 	setWordDelimiters(Preferences::GetPrefDelimiters().toStdString());
 
-	cursorBlinkRate_         = QApplication::cursorFlashTime() / 2;
 	showTerminalSizeHint_    = Preferences::GetPrefShowResizeNotification();
 	colorizeHighlightedText_ = Preferences::GetPrefColorizeHighlightedText();
 	autoWrapPastedText_      = Preferences::GetPrefAutoWrapPastedText();
@@ -524,6 +523,8 @@ TextArea::TextArea(DocumentWidget *document, TextBuffer *buffer, const QFont &fo
 	overstrike_              = document->overstrike();
 	hidePointer_             = Preferences::GetPrefTypingHidesPointer();
 	smartHome_               = Preferences::GetPrefSmartHome();
+
+	cursorBlinkTimer_->setInterval(QApplication::cursorFlashTime() / 2);
 
 	updateFontMetrics(font);
 
@@ -1060,7 +1061,7 @@ void TextArea::focusInEvent(QFocusEvent *event) {
 
 	// If the timer is not already started, start it
 	if (!cursorBlinkTimer_->isActive()) {
-		cursorBlinkTimer_->start(cursorBlinkRate_);
+		cursorBlinkTimer_->start();
 	}
 
 	// Change the cursor to active style
@@ -3558,11 +3559,18 @@ void TextArea::setupBGClasses(const QString &str) {
 	   character background color to #f0f0f0; it is then set to red by the
 	   clause 1-31,127:red). */
 
-	size_t class_no     = 1;
+	size_t class_no = 1;
+#if QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)
+	QStringList formats = str.split(QLatin1Char(';'), Qt::SkipEmptyParts);
+#else
 	QStringList formats = str.split(QLatin1Char(';'), QString::SkipEmptyParts);
+#endif
 	for (const QString &format : formats) {
-
+#if QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)
+		QStringList s1 = format.split(QLatin1Char(':'), Qt::SkipEmptyParts);
+#else
 		QStringList s1 = format.split(QLatin1Char(':'), QString::SkipEmptyParts);
+#endif
 		if (s1.size() == 2) {
 			QString ranges = s1[0];
 			QString color  = s1[1];
@@ -3581,7 +3589,11 @@ void TextArea::setupBGClasses(const QString &str) {
 			QColor pix               = X11Colors::fromString(color);
 			bgClassColors[nextClass] = pix;
 
+#if QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)
+			QStringList rangeList = ranges.split(QLatin1Char(','), Qt::SkipEmptyParts);
+#else
 			QStringList rangeList = ranges.split(QLatin1Char(','), QString::SkipEmptyParts);
+#endif
 			for (const QString &range : rangeList) {
 				QRegExp regex(QLatin1String("([0-9]+)(?:-([0-9]+))?"));
 				if (regex.exactMatch(range)) {
@@ -7875,7 +7887,7 @@ void TextArea::zoomInAP(TextArea::EventFlags flags) {
  */
 void TextArea::wheelEvent(QWheelEvent *event) {
 	if (event->modifiers() == Qt::ControlModifier) {
-		if (event->delta() > 0) {
+		if (event->angleDelta().y() > 0) {
 			zoomInAP();
 		} else {
 			zoomOutAP();

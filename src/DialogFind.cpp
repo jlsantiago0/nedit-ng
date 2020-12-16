@@ -24,6 +24,8 @@ DialogFind::DialogFind(MainWindow *window, DocumentWidget *document, Qt::WindowF
 	ui.setupUi(this);
 	connectSlots();
 
+	ui.textFind->installEventFilter(this);
+
 	QTimer::singleShot(0, this, [this]() {
 		resize(0, 0);
 	});
@@ -50,18 +52,20 @@ void DialogFind::showEvent(QShowEvent *event) {
 }
 
 /**
- * @brief DialogFind::keyPressEvent
- * @param event
+ * @brief DialogFind::eventFilter
+ * @param obj
+ * @param ev
+ * @return
  */
-void DialogFind::keyPressEvent(QKeyEvent *event) {
+bool DialogFind::eventFilter(QObject *obj, QEvent *ev) {
+	if (obj == ui.textFind && ev->type() == QEvent::KeyPress) {
+		auto event = static_cast<QKeyEvent *>(ev);
 
-	if (ui.textFind->hasFocus()) {
 		int index = window_->fHistIndex_;
 
 		// only process up and down arrow keys
 		if (event->key() != Qt::Key_Up && event->key() != Qt::Key_Down) {
-			QDialog::keyPressEvent(event);
-			return;
+			return false;
 		}
 
 		// increment or decrement the index depending on which arrow was pressed
@@ -70,7 +74,7 @@ void DialogFind::keyPressEvent(QKeyEvent *event) {
 		// if the index is out of range, beep and return
 		if (index != 0 && Search::historyIndex(index) == -1) {
 			QApplication::beep();
-			return;
+			return true;
 		}
 
 		// determine the strings and button settings to use
@@ -95,9 +99,11 @@ void DialogFind::keyPressEvent(QKeyEvent *event) {
 		updateFindButton();
 
 		window_->fHistIndex_ = index;
+
+		return true;
 	}
 
-	QDialog::keyPressEvent(event);
+	return false;
 }
 
 /**

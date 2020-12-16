@@ -39,6 +39,10 @@ DialogFonts::DialogFonts(DocumentWidget *document, QWidget *parent, Qt::WindowFl
 	if (n != -1) {
 		ui.fontSize->setCurrentIndex(n);
 	}
+
+	if (!document) {
+		ui.checkApplyAll->setVisible(false);
+	}
 }
 
 void DialogFonts::connectSlots() {
@@ -78,6 +82,11 @@ void DialogFonts::updateFont() {
 
 	if (document_) {
 		document_->action_Set_Fonts(fontName);
+		if (ui.checkApplyAll->isChecked()) {
+			for (DocumentWidget *document : DocumentWidget::allDocuments()) {
+				document->action_Set_Fonts(fontName);
+			}
+		}
 	} else {
 		Preferences::SetPrefFont(fontName);
 	}

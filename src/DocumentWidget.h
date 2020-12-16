@@ -83,6 +83,7 @@ Q_SIGNALS:
 	void updateStatus(DocumentWidget *document, TextArea *area);
 	void updateWindowReadOnly(DocumentWidget *document);
 	void updateWindowTitle(DocumentWidget *document);
+	void fontChanged(DocumentWidget *document);
 
 public:
 	void dragEndCallback(TextArea *area, const DragEndEvent *event);
@@ -292,6 +293,8 @@ private:
 	void updateMarkTable(TextCursor pos, int64_t nInserted, int64_t nDeleted);
 	void updateSelectionSensitiveMenu(QMenu *menu, const gsl::span<MenuData> &menuList, bool enabled);
 	void updateSelectionSensitiveMenus(bool enabled);
+	void dragEnterEvent(QDragEnterEvent *event) override;
+	void dropEvent(QDropEvent *event) override;
 
 public:
 	std::shared_ptr<DocumentInfo> info_;

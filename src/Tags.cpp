@@ -42,6 +42,7 @@ namespace Tags {
 namespace {
 
 int loadTagsFile(const QString &tagSpec, int index, int recLevel);
+QList<Tag> getUniqueTags(QList<Tag> &tags);
 
 struct CalltipAlias {
 	QString dest;
@@ -89,7 +90,9 @@ QString rstrip(QString s) {
 }
 
 QList<Tag> getTagFromTable(QMultiHash<QString, Tag> &table, const QString &name) {
-	return table.values(name);
+	auto tags = table.values(name);
+	tags      = getUniqueTags(tags);
+	return tags;
 }
 
 /*
@@ -174,18 +177,20 @@ bool delTag(int index) {
 */
 int scanCTagsLine(const QString &line, const QString &tagPath, int index) {
 
-	QRegExp regex(QLatin1String(R"(^([^\t]+)\t([^\t]+)\t([^\n]+)\n$)"));
-	if (!regex.exactMatch(line)) {
+	static const auto regex = QRegularExpression(QLatin1String(R"(^([^\t]+)\t([^\t]+)\t([^\n]+)$)"));
+
+	QRegularExpressionMatch match = regex.match(line);
+	if (!match.hasMatch()) {
 		return 0;
 	}
 
-	if (regex.captureCount() != 3) {
+	if (match.lastCapturedIndex() != 3) {
 		return 0;
 	}
 
-	QString name         = regex.cap(1);
-	QString file         = regex.cap(2);
-	QString searchString = regex.cap(3);
+	QString name         = match.captured(1);
+	QString file         = match.captured(2);
+	QString searchString = match.captured(3);
 
 	if (name.startsWith(QLatin1Char('!'))) {
 		return 0;
@@ -350,16 +355,16 @@ int loadTagsFile(const QString &tagSpec, int index, int recLevel) {
 
 	const PathInfo tagPathInfo = parseFilename(resolvedTagsFile);
 
-	/* This might take a while if you have a huge tags file (like I do)..
-	   keep the windows up to date and post a busy cursor so the user
-	   doesn't think we died. */
-	MainWindow::allDocumentsBusy(tr("Loading tags file..."));
-
 	QString filename;
 
 	QTextStream stream(&f);
 
 	while (!stream.atEnd()) {
+		/* This might take a while if you have a huge tags file (like I do)..
+		   keep the windows up to date and post a busy cursor so the user
+		   doesn't think we died. */
+		MainWindow::allDocumentsBusy(tr("Loading tags file..."));
+
 		QString line = stream.readLine();
 
 		/* the first character in the file decides if the file is treat as
@@ -705,6 +710,63 @@ int loadTipsFile(const QString &tipsFile, int index, int recLevel) {
 	return nTipsAdded;
 }
 
+int matchTagRec(QList<Tag> &tags, Tag &tag) {
+	QString newFile;
+	if (QFileInfo(tag.file).isAbsolute()) {
+		newFile = tag.file;
+	} else {
+		newFile = tr("%1%2").arg(tag.path, tag.file);
+	}
+	newFile = NormalizePathname(newFile);
+
+	for (const Tag &t : tags) {
+
+		if (tag.language != t.language) {
+			continue;
+		}
+
+		if (tag.searchString != t.searchString) {
+			continue;
+		}
+
+		if (tag.posInf != t.posInf) {
+			continue;
+		}
+
+		if (QFileInfo(tag.file).isAbsolute() && (newFile != tag.file)) {
+			continue;
+		}
+
+		if (QFileInfo(t.file).isAbsolute()) {
+
+			auto tmpFile = tr("%1%2").arg(t.path, t.file);
+
+			tmpFile = NormalizePathname(tmpFile);
+
+			if (newFile != tmpFile) {
+				continue;
+			}
+		}
+		return 1;
+	}
+
+	return 0;
+}
+
+QList<Tag> getUniqueTags(QList<Tag> &tags) {
+	QList<Tag> ntags;
+
+	if (tags.size() <= 1)
+		return tags;
+
+	for (Tag t1 : tags) {
+		if (!matchTagRec(ntags, t1))
+			ntags.append(t1);
+	}
+
+	return ntags;
+}
+
 }
 
 /*
@@ -734,55 +796,18 @@ TipVAlignMode globVAlign;
 TipAlignMode globAlignMode;
 
 /* Add a tag specification to the hash table
-**   Return Value:  false ... tag already existing, spec not added
-**                  true  ... tag spec is new, added.
+**   Return Value: true (1)  ... tag spec is always added.
 **   (We don't return boolean as the return value is used as counter increment!)
 **
+** Update 11/29/2020:
+**   to help speed up the loading of large tag files, we no longer check
+**   if tag already exists, and instead delegate the checking and removal
+**   of repeated tags to getTag().
 */
-int addTag(const QString &name, const QString &file, size_t lang, const QString &search, int64_t posInf, const QString &path, int index) {
+int addTag(const QString &name, const QString &file, size_t lang,
+		   const QString &search, int64_t posInf, const QString &path, int index) {
 
 	QMultiHash<QString, Tag> *const table = hashTableByType(searchMode);
-
-	QString newFile;
-	if (QFileInfo(file).isAbsolute()) {
-		newFile = file;
-	} else {
-		newFile = tr("%1%2").arg(path, file);
-	}
-
-	newFile = NormalizePathname(newFile);
-
-	QList<Tag> tags = table->values(name);
-	for (const Tag &t : tags) {
-
-		if (lang != t.language) {
-			continue;
-		}
-
-		if (search != t.searchString) {
-			continue;
-		}
-
-		if (posInf != t.posInf) {
-			continue;
-		}
-
-		if (QFileInfo(t.file).isAbsolute() && (newFile != t.file)) {
-			continue;
-		}
-
-		if (QFileInfo(t.file).isAbsolute()) {
-
-			auto tmpFile = tr("%1%2").arg(t.path, t.file);
-
-			tmpFile = NormalizePathname(tmpFile);
-
-			if (newFile != tmpFile) {
-				continue;
-			}
-		}
-		return 0;
-	}
 
 	Tag t = {name, file, search, path, lang, posInf, index};
 
@@ -806,7 +831,12 @@ bool addRelTagsFile(const QString &tagSpec, const QString &windowPath, SearchMod
 		return false;
 	}
 
-	QStringList filenames = tagSpec.split(QLatin1Char(':'));
+#ifdef Q_OS_WIN
+	auto sep = QLatin1Char(';');
+#else
+	auto sep = QLatin1Char(':');
+#endif
+	QStringList filenames = tagSpec.split(sep);
 
 	for (const QString &filename : filenames) {
 		if (QFileInfo(filename).isAbsolute() || filename.startsWith(QLatin1Char('~'))) {
@@ -874,7 +904,12 @@ bool addTagsFile(const QString &tagSpec, SearchMode mode) {
 		return false;
 	}
 
-	QStringList filenames = tagSpec.split(QLatin1Char(':'));
+#ifdef Q_OS_WIN
+	auto sep = QLatin1Char(';');
+#else
+	auto sep = QLatin1Char(':');
+#endif
+	QStringList filenames = tagSpec.split(sep);
 
 	for (const QString &filename : filenames) {
 
@@ -942,7 +977,12 @@ bool deleteTagsFile(const QString &tagSpec, SearchMode mode, bool force_unload) 
 
 	bool removed = true;
 
-	QStringList filenames = tagSpec.split(QLatin1Char(':'));
+#ifdef Q_OS_WIN
+	auto sep = QLatin1Char(';');
+#else
+	auto sep = QLatin1Char(':');
+#endif
+	QStringList filenames = tagSpec.split(sep);
 
 	for (const QString &filename : filenames) {
 

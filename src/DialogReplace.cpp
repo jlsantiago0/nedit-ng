@@ -92,6 +92,9 @@ DialogReplace::DialogReplace(MainWindow *window, DocumentWidget *document, Qt::W
 	ui.setupUi(this);
 	connectSlots();
 
+	ui.textFind->installEventFilter(this);
+	ui.textReplace->installEventFilter(this);
+
 	QTimer::singleShot(0, this, [this]() {
 		resize(0, 0);
 	});
@@ -123,18 +126,21 @@ void DialogReplace::showEvent(QShowEvent *event) {
 }
 
 /**
- * @brief DialogReplace::keyPressEvent
- * @param event
+ * @brief DialogReplace::eventFilter
+ * @param obj
+ * @param ev
+ * @return
  */
-void DialogReplace::keyPressEvent(QKeyEvent *event) {
+bool DialogReplace::eventFilter(QObject *obj, QEvent *ev) {
 
-	if (ui.textFind->hasFocus()) {
+	if (obj == ui.textFind && ev->type() == QEvent::KeyPress) {
+		auto event = static_cast<QKeyEvent *>(ev);
+
 		int index = window_->rHistIndex_;
 
 		// only process up and down arrow keys
 		if (event->key() != Qt::Key_Up && event->key() != Qt::Key_Down) {
-			QDialog::keyPressEvent(event);
-			return;
+			return false;
 		}
 
 		// increment or decrement the index depending on which arrow was pressed
@@ -143,7 +149,7 @@ void DialogReplace::keyPressEvent(QKeyEvent *event) {
 		// if the index is out of range, beep and return
 		if (index != 0 && Search::historyIndex(index) == -1) {
 			QApplication::beep();
-			return;
+			return true;
 		}
 
 		// determine the strings and button settings to use
@@ -173,15 +179,17 @@ void DialogReplace::keyPressEvent(QKeyEvent *event) {
 		updateFindButton();
 
 		window_->rHistIndex_ = index;
+
+		return true;
 	}
 
-	if (ui.textReplace->hasFocus()) {
-		int index = window_->rHistIndex_;
+	if (obj == ui.textReplace && ev->type() == QEvent::KeyPress) {
+		auto event = static_cast<QKeyEvent *>(ev);
+		int index  = window_->rHistIndex_;
 
 		// only process up and down arrow keys
 		if (event->key() != Qt::Key_Up && event->key() != Qt::Key_Down) {
-			QDialog::keyPressEvent(event);
-			return;
+			return false;
 		}
 
 		// increment or decrement the index depending on which arrow was pressed
@@ -190,7 +198,7 @@ void DialogReplace::keyPressEvent(QKeyEvent *event) {
 		// if the index is out of range, beep and return
 		if (index != 0 && Search::historyIndex(index) == -1) {
 			QApplication::beep();
-			return;
+			return true;
 		}
 
 		// change only the replace field information
@@ -201,9 +209,10 @@ void DialogReplace::keyPressEvent(QKeyEvent *event) {
 		}
 
 		window_->rHistIndex_ = index;
+		return true;
 	}
 
-	QDialog::keyPressEvent(event);
+	return false;
 }
 
 /**

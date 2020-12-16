@@ -432,17 +432,17 @@ void loadMacroMenuYaml(std::vector<MenuData> &menuItems) {
 						qWarning("Invalid input type: %s", input_type.c_str());
 					}
 				}
+			}
 
-				// add/replace menu record in the list
-				auto it2 = std::find_if(menuItems.begin(), menuItems.end(), [&menuItem](MenuData &data) {
-					return data.item.name == menuItem.name;
-				});
+			// add/replace menu record in the list
+			auto it2 = std::find_if(menuItems.begin(), menuItems.end(), [&menuItem](MenuData &data) {
+				return data.item.name == menuItem.name;
+			});
 
-				if (it2 == menuItems.end()) {
-					menuItems.push_back({menuItem, nullptr});
-				} else {
-					it2->item = menuItem;
-				}
+			if (it2 == menuItems.end()) {
+				menuItems.push_back({menuItem, nullptr});
+			} else {
+				it2->item = menuItem;
 			}
 		}
 	} catch (const YAML::Exception &ex) {
@@ -513,17 +513,17 @@ void loadShellMenuYaml(std::vector<MenuData> &menuItems) {
 				} else if (key == "load_after") {
 					menuItem.loadAfter = value.as<bool>();
 				}
+			}
 
-				// add/replace menu record in the list
-				auto it2 = std::find_if(menuItems.begin(), menuItems.end(), [&menuItem](MenuData &data) {
-					return data.item.name == menuItem.name;
-				});
+			// add/replace menu record in the list
+			auto it2 = std::find_if(menuItems.begin(), menuItems.end(), [&menuItem](MenuData &data) {
+				return data.item.name == menuItem.name;
+			});
 
-				if (it2 == menuItems.end()) {
-					menuItems.push_back({menuItem, nullptr});
-				} else {
-					it2->item = menuItem;
-				}
+			if (it2 == menuItems.end()) {
+				menuItems.push_back({menuItem, nullptr});
+			} else {
+				it2->item = menuItem;
 			}
 		}
 	} catch (const YAML::Exception &ex) {
@@ -567,17 +567,17 @@ void loadContextMenuYaml(std::vector<MenuData> &menuItems) {
 						qWarning("Invalid input type: %s", input_type.c_str());
 					}
 				}
+			}
 
-				// add/replace menu record in the list
-				auto it2 = std::find_if(menuItems.begin(), menuItems.end(), [&menuItem](MenuData &data) {
-					return data.item.name == menuItem.name;
-				});
+			// add/replace menu record in the list
+			auto it2 = std::find_if(menuItems.begin(), menuItems.end(), [&menuItem](MenuData &data) {
+				return data.item.name == menuItem.name;
+			});
 
-				if (it2 == menuItems.end()) {
-					menuItems.push_back({menuItem, nullptr});
-				} else {
-					it2->item = menuItem;
-				}
+			if (it2 == menuItems.end()) {
+				menuItems.push_back({menuItem, nullptr});
+			} else {
+				it2->item = menuItem;
 			}
 		}
 	} catch (const YAML::Exception &ex) {
@@ -668,8 +668,11 @@ void parseMenuItemName(const QString &menuItemName, const std::unique_ptr<UserMe
 			info->umiIsDefault = true;
 			return;
 		}
-
+#if QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)
+		QStringList languages = languageString.split(QLatin1Char('@'), Qt::SkipEmptyParts);
+#else
 		QStringList languages = languageString.split(QLatin1Char('@'), QString::SkipEmptyParts);
+#endif
 		std::vector<size_t> languageModes;
 
 		// setup a list of all language modes related to given menu item

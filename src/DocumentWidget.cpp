@@ -473,6 +473,9 @@ DocumentWidget *DocumentWidget::editExistingFile(DocumentWidget *inDocument, con
 
 	if (Preferences::GetPrefAlwaysCheckRelTagsSpecs()) {
 		Tags::addRelTagsFile(Preferences::GetPrefTagFile(), path, Tags::SearchMode::TAG);
+		for (MainWindow *window : MainWindow::allWindows()) {
+			window->updateTagsFileMenu();
+		}
 	}
 
 	MainWindow::addToPrevOpenMenu(fullname);
@@ -568,6 +571,7 @@ DocumentWidget::DocumentWidget(const QString &name, QWidget *parent, Qt::WindowF
 	// track what the last created document was so that focus_document("last")
 	// works correctly
 	LastCreated = this;
+	setAcceptDrops(true);
 
 	// Every document has a backing buffer
 	info_->buffer = std::make_shared<TextBuffer>();
@@ -1533,13 +1537,15 @@ void DocumentWidget::updateSelectionSensitiveMenu(QMenu *menu, const gsl::span<M
 			if (QMenu *subMenu = action->menu()) {
 				updateSelectionSensitiveMenu(subMenu, menuList, enabled);
 			} else {
-				size_t index = action->data().toUInt();
-				if (index >= menuList.size()) {
-					return;
-				}
+				if (action->data().isValid()) {
+					size_t index = action->data().toUInt();
+					if (index >= menuList.size()) {
+						return;
+					}
 
-				if (menuList[index].item.input == FROM_SELECTION) {
-					action->setEnabled(enabled);
+					if (menuList[index].item.input == FROM_SELECTION) {
+						action->setEnabled(enabled);
+					}
 				}
 			}
 		}
@@ -3290,6 +3296,7 @@ void DocumentWidget::refreshWindowStates() {
 
 	Q_EMIT updateWindowReadOnly(this);
 	Q_EMIT updateWindowTitle(this);
+	Q_EMIT fontChanged(this);
 
 	// show/hide statsline as needed
 	if (modeMessageDisplayed() && !ui.statusFrame->isVisible()) {
@@ -4271,6 +4278,8 @@ void DocumentWidget::action_Set_Fonts(const QString &fontName) {
 	for (TextArea *area : textPanes()) {
 		area->setFont(font_);
 	}
+
+	Q_EMIT fontChanged(this);
 }
 
 /*
@@ -7105,13 +7114,13 @@ int DocumentWidget::findAllMatches(TextArea *area, const QString &string) {
 
 				if (!Tags::tagSearch[i].isEmpty() && (Tags::tagPosInf[i] != -1)) {
 					// etags
-					temp = QString::asprintf("%2d. %s%s %8li %s", i + 1, qPrintable(fi.pathname), qPrintable(fi.filename), Tags::tagPosInf[i], qPrintable(Tags::tagSearch[i]));
+					temp = QString::asprintf("%2d. %s%s %8lli %s", i + 1, qPrintable(fi.pathname), qPrintable(fi.filename), static_cast<long long>(Tags::tagPosInf[i]), qPrintable(Tags::tagSearch[i]));
 				} else if (!Tags::tagSearch[i].isEmpty()) {
 					// ctags search expr
 					temp = QString::asprintf("%2d. %s%s          %s", i + 1, qPrintable(fi.pathname), qPrintable(fi.filename), qPrintable(Tags::tagSearch[i]));
 				} else {
 					// line number only
-					temp = QString::asprintf("%2d. %s%s %8li", i + 1, qPrintable(fi.pathname), qPrintable(fi.filename), Tags::tagPosInf[i]);
+					temp = QString::asprintf("%2d. %s%s %8lli", i + 1, qPrintable(fi.pathname), qPrintable(fi.filename), static_cast<long long>(Tags::tagPosInf[i]));
 				}
 			} else {
 				temp = QString::asprintf("%2d. %s%s", i + 1, qPrintable(fi.pathname), qPrintable(fi.filename));
@@ -7241,11 +7250,11 @@ void DocumentWidget::editTaggedLocation(TextArea *area, int i) {
 	   about 1/4 of the way down from the top */
 	const int64_t lineNum = documentToSearch->buffer()->BufCountLines(TextCursor(0), TextCursor(startPos));
 
-	int rows = area->getRows();
-
-	area->verticalScrollBar()->setValue(lineNum - (rows / 4));
-	area->horizontalScrollBar()->setValue(0);
-	area->TextSetCursorPos(TextCursor(endPos));
+	QPointer<TextArea> tagArea = MainWindow::fromDocument(documentToSearch)->lastFocus();
+	int rows                   = tagArea->getRows();
+	tagArea->verticalScrollBar()->setValue(lineNum - (rows / 4));
+	tagArea->horizontalScrollBar()->setValue(0);
+	tagArea->TextSetCursorPos(TextCursor(endPos));
 }
 
 /**
@@ -7355,4 +7364,30 @@ WrapStyle DocumentWidget::wrapMode() const {
  */
 void DocumentWidget::setFileFormat(FileFormats fileFormat) {
 	info_->fileFormat = fileFormat;
+}
+
+/**
+ * @brief dragEnterEvent
+ * @param event
+ */
+void DocumentWidget::dragEnterEvent(QDragEnterEvent *event) {
+	if (event->mimeData()->hasUrls()) {
+		event->accept();
+	}
+}
+
+/**
+ * @brief dropEvent
+ * @param event
+ */
+void DocumentWidget::dropEvent(QDropEvent *event) {
+	auto urls = event->mimeData()->urls();
+	for (auto url : urls) {
+		if (url.isLocalFile()) {
+			QString fileName = url.toLocalFile();
+			open(fileName);
+		} else {
+			QApplication::beep();
+		}
+	}
 }

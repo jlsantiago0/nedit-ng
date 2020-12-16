@@ -33,20 +33,35 @@ DialogAbout::DialogAbout(QWidget *parent, Qt::WindowFlags f)
  */
 QString DialogAbout::createInfoString() {
 
-	auto versionString   = tr("%1.%2").arg(NEDIT_VERSION_MAJ).arg(NEDIT_VERSION_REV);
+#ifdef NEDIT_VERSION_GIT
+	auto versionString = tr(NEDIT_VERSION_GIT);
+#else
+	auto versionString = tr("%1.%2").arg(NEDIT_VERSION_MAJ).arg(NEDIT_VERSION_REV);
+#endif
+
 	QString localeString = QLocale::system().bcp47Name();
+	QString gitExtra;
+
+#ifdef NEDIT_BRANCH_GIT
+	gitExtra += tr("   Git branch: %1\n").arg(QLatin1String(NEDIT_BRANCH_GIT));
+#endif
+#ifdef NEDIT_COMMIT_GIT
+	gitExtra += tr("   Git commit: %1\n").arg(QLatin1String(NEDIT_COMMIT_GIT));
+#endif
 
 	return tr("nedit-ng version %1\n"
 			  "\n"
 			  "     Built on: %2, %3, %4\n"
 			  "      With Qt: %7\n"
 			  "   Running Qt: %8\n"
-			  "       Locale: %9\n")
+			  "       Locale: %9\n"
+			  "%10\n")
 		.arg(versionString,
 			 buildOperatingSystem(),
 			 buildArchitecture(),
 			 buildCompiler(),
 			 QLatin1String(QT_VERSION_STR),
 			 QString::fromLatin1(qVersion()),
-			 localeString);
+			 localeString,
+			 gitExtra);
 }

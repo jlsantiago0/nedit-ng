@@ -6,6 +6,7 @@
 #include <QApplication>
 #include <QLibraryInfo>
 #include <QStringList>
+#include <QStyleFactory>
 #include <QTranslator>
 
 bool IsServer = false;
@@ -55,8 +56,6 @@ void messageHandler(QtMsgType type, const QMessageLogContext &context, const QSt
  * @return
  */
 int main(int argc, char *argv[]) {
-
-	qsrand(::time(nullptr));
 
 	// On linux (and perhaps other UNIX's), we should support -version even
 	// when X11 is not running
@@ -119,6 +118,10 @@ int main(int argc, char *argv[]) {
 		arguments.insert(1, QLatin1String("-geometry"));
 		arguments.insert(2, geometry);
 	}
+
+#ifdef Q_OS_MACOS
+	qApp->setStyle(QStyleFactory::create(QLatin1String("fusion")));
+#endif
 
 	// Light/Dark icons on all platforms
 	if (qApp->palette().window().color().lightnessF() >= 0.5) {
