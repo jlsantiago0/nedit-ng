@@ -84,7 +84,6 @@ struct InstructionLazyStar : Instruction {
 		std::cout << std::setw(4) << pc << ": "
 				  << "LAZY_STAR -> " << pc + next << std::endl;
 	}
-
 };
 struct InstructionPlus : Instruction {
 	InstructionPlus(size_t loc, uint8_t o, int16_t n)
@@ -211,7 +210,6 @@ struct InstructionNegAheadOpen : Instruction {
 		std::cout << std::setw(4) << pc << ": "
 				  << "NEG_LOOK_AHEAD_OPEN -> " << pc - next << std::endl;
 	}
-
 };
 struct InstructionLookAheadClose : Instruction {
 	InstructionLookAheadClose(size_t loc, uint8_t o, int16_t n)

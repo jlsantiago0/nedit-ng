@@ -2,10 +2,10 @@
 #ifndef COMPILE_H_
 #define COMPILE_H_
 
+#include "Reader.h"
 #include "Util/string_view.h"
 #include <bitset>
 #include <vector>
-#include "Reader.h"
 
 class Regex;
 

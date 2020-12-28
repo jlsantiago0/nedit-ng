@@ -632,7 +632,7 @@ uint8_t *atom(int *flag_param, len_range *range_param) {
 	int flags_local;
 	len_range range_local;
 
-	*flag_param       = WORST; // Tentatively.
+	*flag_param        = WORST; // Tentatively.
 	range_param->lower = 0;     // Idem
 	range_param->upper = 0;
 
@@ -758,44 +758,44 @@ uint8_t *atom(int *flag_param, len_range *range_param) {
 			range_param.upper = 1;
 		} else {
 #endif
-			uint8_t last_emit = 0x00;
+		uint8_t last_emit = 0x00;
 
-			// Handle characters that can only occur at the start of a class.
-			if (pContext.Input.match('^')) { // Complement of range.
-				ret_val = emit_node(ANY_BUT);
+		// Handle characters that can only occur at the start of a class.
+		if (pContext.Input.match('^')) { // Complement of range.
+			ret_val = emit_node(ANY_BUT);
 
-				/* All negated classes include newline unless escaped with
+			/* All negated classes include newline unless escaped with
 				 * a "(?n)" switch. */
 
-				if (!pContext.Match_Newline) {
-					emit_byte('\n');
-				}
-			} else {
-				ret_val = emit_node(ANY_OF);
+			if (!pContext.Match_Newline) {
+				emit_byte('\n');
 			}
+		} else {
+			ret_val = emit_node(ANY_OF);
+		}
 
-			if (pContext.Input.peek() == ']' || pContext.Input.peek() == '-') {
-				/* If '-' or ']' is the first character in a class,
+		if (pContext.Input.peek() == ']' || pContext.Input.peek() == '-') {
+			/* If '-' or ']' is the first character in a class,
 				 * it is a literal character in the class. */
 
-				char ch   = pContext.Input.read();
-				last_emit = static_cast<uint8_t>(ch);
-				emit_byte(ch);
-			}
+			char ch   = pContext.Input.read();
+			last_emit = static_cast<uint8_t>(ch);
+			emit_byte(ch);
+		}
 
-			// Handle the rest of the class characters.
-			while (pContext.Input.peek() != ']') {
-				if (pContext.Input.match('-')) { // Process a range, e.g [a-z].
+		// Handle the rest of the class characters.
+		while (pContext.Input.peek() != ']') {
+			if (pContext.Input.match('-')) { // Process a range, e.g [a-z].
 
-					if (pContext.Input.peek() == ']') {
-						/* If '-' is the last character in a class it is a literal
+				if (pContext.Input.peek() == ']') {
+					/* If '-' is the last character in a class it is a literal
 						 * character.  If at the end of the regex string,
 						 * an error will be generated later. */
 
-						emit_byte('-');
-						last_emit = '-';
-					} else {
-						/* We must get the range starting character value from the
+					emit_byte('-');
+					last_emit = '-';
+				} else {
+					/* We must get the range starting character value from the
 					   emitted code since it may have been an escaped
 					   character.  'second_value' is set one larger than the
 					   just emitted character value.  This is done since
@@ -804,109 +804,109 @@ uint8_t *atom(int *flag_param, len_range *range_param) {
 					   already emitted the first character of the class, we do
 					   not want to emit it again. */
 
-						unsigned int last_value;
-						unsigned int second_value = static_cast<unsigned int>(last_emit) + 1;
+					unsigned int last_value;
+					unsigned int second_value = static_cast<unsigned int>(last_emit) + 1;
 
-						if (pContext.Input.match('\\')) {
-							/* Handle escaped characters within a class range.
+					if (pContext.Input.match('\\')) {
+						/* Handle escaped characters within a class range.
 						   Specifically disallow shortcut escapes as the end of
 						   a class range.  To allow this would be ambiguous
 						   since shortcut escapes represent a set of characters,
 						   and it would not be clear which character of the
 						   class should be treated as the "last" character. */
 
-							if (uint8_t test = numeric_escape<uint8_t>(pContext.Input.peek(), pContext.Input)) {
-								last_value = test;
-							} else if (uint8_t test = literal_escape<uint8_t>(pContext.Input.peek())) {
-								last_value = test;
-							} else if (shortcut_escape<CHECK_CLASS_ESCAPE>(pContext.Input.peek(), nullptr)) {
-								Raise<RegexError>("\\%c is not allowed as range operand", pContext.Input.peek());
-							} else {
-								Raise<RegexError>("\\%c is an invalid char class escape sequence", pContext.Input.peek());
-							}
+						if (uint8_t test = numeric_escape<uint8_t>(pContext.Input.peek(), pContext.Input)) {
+							last_value = test;
+						} else if (uint8_t test = literal_escape<uint8_t>(pContext.Input.peek())) {
+							last_value = test;
+						} else if (shortcut_escape<CHECK_CLASS_ESCAPE>(pContext.Input.peek(), nullptr)) {
+							Raise<RegexError>("\\%c is not allowed as range operand", pContext.Input.peek());
 						} else {
-							last_value = static_cast<uint8_t>(pContext.Input.peek());
+							Raise<RegexError>("\\%c is an invalid char class escape sequence", pContext.Input.peek());
 						}
+					} else {
+						last_value = static_cast<uint8_t>(pContext.Input.peek());
+					}
 
-						if (pContext.Is_Case_Insensitive) {
-							second_value = static_cast<unsigned int>(safe_ctype<::tolower>(second_value));
-							last_value   = static_cast<unsigned int>(safe_ctype<::tolower>(last_value));
-						}
+					if (pContext.Is_Case_Insensitive) {
+						second_value = static_cast<unsigned int>(safe_ctype<::tolower>(second_value));
+						last_value   = static_cast<unsigned int>(safe_ctype<::tolower>(last_value));
+					}
 
-						/* For case insensitive, something like [A-_] will
+					/* For case insensitive, something like [A-_] will
 					   generate an error here since ranges are converted to
 					   lower case. */
 
-						if (second_value - 1 > last_value) {
-							Raise<RegexError>("invalid [] range");
-						}
+					if (second_value - 1 > last_value) {
+						Raise<RegexError>("invalid [] range");
+					}
 
-						/* If only one character in range (e.g [a-a]) then this
+					/* If only one character in range (e.g [a-a]) then this
 					   loop is not run since the first character of any range
 					   was emitted by the previous iteration of while loop. */
 
-						for (; second_value <= last_value; second_value++) {
-							emit_class_byte(second_value);
-						}
-
-						last_emit = static_cast<uint8_t>(last_value);
-
-						pContext.Input.read();
+					for (; second_value <= last_value; second_value++) {
+						emit_class_byte(second_value);
 					}
-				} else if (pContext.Input.match('\\')) {
 
-					if (uint8_t test = numeric_escape<uint8_t>(pContext.Input.peek(), pContext.Input)) {
-						emit_class_byte(test);
-
-						last_emit = test;
-					} else if (uint8_t test = literal_escape<uint8_t>(pContext.Input.peek())) {
-						emit_byte(test);
-						last_emit = test;
-					} else if (shortcut_escape<CHECK_CLASS_ESCAPE>(pContext.Input.peek(), nullptr)) {
-
-						Reader temp = pContext.Input;
-						temp.read();
-						if (temp.peek() == '-') {
-							/* Specifically disallow shortcut escapes as the start
-						   of a character class range (see comment above.) */
-
-							Raise<RegexError>("\\%c not allowed as range operand", pContext.Input.peek());
-						} else {
-							/* Emit the bytes that are part of the shortcut
-						   escape sequence's range (e.g. \d = 0123456789) */
-
-							shortcut_escape<EMIT_CLASS_BYTES>(pContext.Input.peek(), nullptr);
-						}
-					} else {
-						Raise<RegexError>("\\%c is an invalid char class escape sequence", pContext.Input.peek());
-					}
+					last_emit = static_cast<uint8_t>(last_value);
 
 					pContext.Input.read();
-
-					// End of class escaped sequence code
-				} else {
-					const char ch = pContext.Input.read();
-					emit_class_byte(ch); // Ordinary class character.
-
-					last_emit = static_cast<uint8_t>(ch);
 				}
+			} else if (pContext.Input.match('\\')) {
+
+				if (uint8_t test = numeric_escape<uint8_t>(pContext.Input.peek(), pContext.Input)) {
+					emit_class_byte(test);
+
+					last_emit = test;
+				} else if (uint8_t test = literal_escape<uint8_t>(pContext.Input.peek())) {
+					emit_byte(test);
+					last_emit = test;
+				} else if (shortcut_escape<CHECK_CLASS_ESCAPE>(pContext.Input.peek(), nullptr)) {
+
+					Reader temp = pContext.Input;
+					temp.read();
+					if (temp.peek() == '-') {
+						/* Specifically disallow shortcut escapes as the start
+						   of a character class range (see comment above.) */
+
+						Raise<RegexError>("\\%c not allowed as range operand", pContext.Input.peek());
+					} else {
+						/* Emit the bytes that are part of the shortcut
+						   escape sequence's range (e.g. \d = 0123456789) */
+
+						shortcut_escape<EMIT_CLASS_BYTES>(pContext.Input.peek(), nullptr);
+					}
+				} else {
+					Raise<RegexError>("\\%c is an invalid char class escape sequence", pContext.Input.peek());
+				}
+
+				pContext.Input.read();
+
+				// End of class escaped sequence code
+			} else {
+				const char ch = pContext.Input.read();
+				emit_class_byte(ch); // Ordinary class character.
+
+				last_emit = static_cast<uint8_t>(ch);
 			}
+		}
 
-			if (!pContext.Input.match(']')) {
-				Raise<RegexError>("missing right ']'");
-			}
+		if (!pContext.Input.match(']')) {
+			Raise<RegexError>("missing right ']'");
+		}
 
-			emit_byte('\0');
+		emit_byte('\0');
 
-			/* NOTE: it is impossible to specify an empty class.  This is
+		/* NOTE: it is impossible to specify an empty class.  This is
 		   because [] would be interpreted as "begin character class"
 		   followed by a literal ']' character and no "end character class"
 		   delimiter (']').  Because of this, it is always safe to assume
 		   that a class HAS_WIDTH. */
 
-			*flag_param |= HAS_WIDTH | SIMPLE;
-			range_param->lower = 1;
-			range_param->upper = 1;
+		*flag_param |= HAS_WIDTH | SIMPLE;
+		range_param->lower = 1;
+		range_param->upper = 1;
 #if 0
 		}
 #endif
@@ -1068,7 +1068,7 @@ uint8_t *piece(int *flag_param, len_range *range_param) {
 	char op_code = pContext.Input.peek();
 
 	if (!isQuantifier(op_code)) {
-		*flag_param = flags_local;
+		*flag_param  = flags_local;
 		*range_param = range_local;
 		return ret_val;
 	} else if (op_code == '{') { // {n,m} quantifier present
@@ -1174,7 +1174,7 @@ uint8_t *piece(int *flag_param, len_range *range_param) {
 			/* "x{1,1}" is the same as "x".  No need to pollute the compiled
 				regex with such nonsense. */
 
-			*flag_param = flags_local;
+			*flag_param  = flags_local;
 			*range_param = range_local;
 			return ret_val;
 		} else if (pContext.Num_Braces > static_cast<int>(std::numeric_limits<uint8_t>::max())) {
@@ -1590,8 +1590,8 @@ uint8_t *alternative(int *flag_param, len_range *range_param) {
 	int flags_local;
 	len_range range_local;
 
-	*flag_param       = WORST; // Tentatively.
-	range_param->lower = 0;    // Idem
+	*flag_param        = WORST; // Tentatively.
+	range_param->lower = 0;     // Idem
 	range_param->upper = 0;
 
 	ret_val = emit_node(BRANCH);
@@ -1657,8 +1657,8 @@ uint8_t *chunk(int paren, int *flag_param, len_range *range_param) {
 	bool look_only                   = false;
 	uint8_t *emit_look_behind_bounds = nullptr;
 	*flag_param                      = HAS_WIDTH; // Tentatively.
-	range_param->lower                = 0;         // Idem
-	range_param->upper                = 0;
+	range_param->lower               = 0;         // Idem
+	range_param->upper               = 0;
 
 	// Make an OPEN node, if parenthesized.
 
@@ -1698,7 +1698,7 @@ uint8_t *chunk(int paren, int *flag_param, len_range *range_param) {
 		}
 
 		if (first) {
-			first       = false;
+			first        = false;
 			*range_param = range_local;
 			if (!ret_val) {
 				ret_val = this_branch;

@@ -794,14 +794,16 @@ int main() {
 
 #if 1
 
-		std::string regex = "<(AAA|BBB|CCC)>";;
-		std::cout << regex << std::endl << std::endl;
-		Regex re(regex, REDFLT_STANDARD);
-		std::vector<Instruction *> insts = decompileRegex(re);
-		for(Instruction *inst : insts) {
-			inst->print();
-			delete inst;
-		}
+	std::string regex = "<(AAA|BBB|CCC)>";
+	;
+	std::cout << regex << std::endl
+			  << std::endl;
+	Regex re(regex, REDFLT_STANDARD);
+	std::vector<Instruction *> insts = decompileRegex(re);
+	for (Instruction *inst : insts) {
+		inst->print();
+		delete inst;
+	}
 #endif
 	std::cout << "SUCCESS\n";
 }

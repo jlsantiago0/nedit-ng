@@ -15,7 +15,6 @@
 #include <climits>
 #include <cstdio>
 #include <cstring>
-#include <cctype>
 
 namespace {
 

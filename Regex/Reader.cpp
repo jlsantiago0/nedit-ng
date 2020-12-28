@@ -27,7 +27,7 @@ char Reader::peek() const {
  * @brief Reader::putback
  */
 void Reader::putback() {
-	if(index_ != 0) {
+	if (index_ != 0) {
 		--index_;
 	}
 }
@@ -114,4 +114,3 @@ size_t Reader::index() const {
 Reader::operator bool() const {
 	return !eof();
 }
-

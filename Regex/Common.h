@@ -4,9 +4,9 @@
 
 #include "Constants.h"
 #include "Opcodes.h"
+#include "Reader.h"
 #include "RegexError.h"
 #include "Util/Raise.h"
-#include "Reader.h"
 
 #include <cstdint>
 #include <cstring>

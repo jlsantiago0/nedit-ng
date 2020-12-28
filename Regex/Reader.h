@@ -2,16 +2,16 @@
 #ifndef READER_H_
 #define READER_H_
 
+#include "Util/string_view.h"
 #include <cstddef>
 #include <string>
-#include "Util/string_view.h"
 
 class Reader {
 public:
 	explicit Reader(view::string_view input);
-	Reader() = default;
+	Reader()               = default;
 	Reader(const Reader &) = default;
-	Reader& operator=(const Reader &) = default;
+	Reader &operator=(const Reader &) = default;
 
 public:
 	bool eof() const;
@@ -29,7 +29,7 @@ public:
 
 private:
 	view::string_view input_;
-	size_t index_  = 0;
+	size_t index_ = 0;
 };
 
 #endif
