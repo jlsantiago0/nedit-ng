@@ -1961,6 +1961,15 @@ QString DocumentWidget::backupFileName() const {
 	}
 }
 
+#warning "TODO: REMOVE THE DEBUG."
+static const bool debugChanges = true;
+static const char * Bool2CString(bool tf) {
+	if (tf)
+		return "True";
+	else
+		return "False";
+}
+
 /*
 ** Check if the file in the window was changed by an external source.
 ** and put up a warning dialog if it has.
@@ -2133,6 +2142,25 @@ void DocumentWidget::checkForChangesToFile() {
 		}
 	}
 
+	if (debugChanges) {
+		QTextStream out(stdout);
+		out << "State: " << (intptr_t)this
+			<< "\n    Feature167Conf: Always=" << Bool2CString(feature167Helper.always)
+				<< " WhenModified=" << Bool2CString(feature167Helper.whenWindowIsModified)
+				<< " WhenUserInteracts=" << Bool2CString(feature167Helper.whenUserInteracts)
+			<< "\n    silent=" << Bool2CString(silent)
+			<< "\n    isTopDocument()=" << Bool2CString(isTopDocument())
+			<< "\n    win->isVisible()=" << Bool2CString(win->isVisible())
+			<< "\n    info_->fileMissing=" << Bool2CString(info_->fileMissing)
+			<< "\n    info_->statbuf.st_mtime=" << info_->statbuf.st_mtime
+			<< "\n    statbuf.st_mtime=" << statbuf.st_mtime
+			<< "\n    (info_->statbuf.st_mtime != statbuf.st_mtime)=" << Bool2CString(info_->statbuf.st_mtime != statbuf.st_mtime)
+			<< "\n    isWindowModified_=" << Bool2CString(isWindowModified_)
+			<< "\n    userInteractionDetected_=" << Bool2CString(userInteractionDetected_)
+			<< "\n    feature167Helper.CheckEnabled()=" << Bool2CString(feature167Helper.CheckEnabled())
+			<< "\n";
+	}
+
 	/* Warn the user if the file has been modified, unless checking is
 	 * turned off or the user has already been warned. */
 	if (!silent && ((info_->statbuf.st_mtime != 0 && info_->statbuf.st_mtime != statbuf.st_mtime) || info_->fileMissing)) {
@@ -2143,13 +2171,28 @@ void DocumentWidget::checkForChangesToFile() {
 			return;
 		}
 
+		if ((debugChanges)) {
+			QTextStream out(stdout);
+			out << "Checking For External Change.\n";
+		}
+
 		if (Preferences::GetPrefWarnRealFileMods() && !compareDocumentToFile(fullname)) {
+
+			if ((debugChanges)) {
+			   QTextStream out(stdout);
+			   out << "No External Change Detected.\n";
+			}
 
 			clearUserInteractionDetected();
 
 			// Contents hasn't changed. Update the modification time.
 			info_->statbuf.st_mtime = statbuf.st_mtime;
 			return;
+		}
+
+		if ((debugChanges)) {
+			QTextStream out(stdout);
+			out << "External Change Detected and Launching QMessageBox.\n";
 		}
 
 		QMessageBox messageBox(this);
@@ -2169,6 +2212,13 @@ void DocumentWidget::checkForChangesToFile() {
 		messageBox.exec();
 		if (messageBox.clickedButton() == buttonReload) {
 			revertToSaved();
+		}
+	}
+	else {
+		if ((debugChanges))
+		{
+			QTextStream out(stdout);
+			out << "Skipping Checking For External Change.\n";
 		}
 	}
 }
@@ -7484,6 +7534,13 @@ void DocumentWidget::dropEvent(QDropEvent *event) {
  * @brief DocumentWidget::clearUserInteractionDetected
  */
 void DocumentWidget::clearUserInteractionDetected() {
+
+	if (debugChanges) {
+		QTextStream out(stdout);
+		out << "ClearUserInteractionDetected: " << (intptr_t)this
+			<< " userInteractionDetected_=" << Bool2CString(userInteractionDetected_) << "\n";
+	}
+
 	userInteractionDetected_ = false;
 }
 
@@ -7491,5 +7548,13 @@ void DocumentWidget::clearUserInteractionDetected() {
  * @brief DocumentWidget::setUserInteractionDetected
  */
 void DocumentWidget::setUserInteractionDetected(){
+
+	if (debugChanges) {
+		QTextStream out(stdout);
+		out
+			<< "SetUserInteractionDetected: " << (intptr_t)this
+			<< " userInteractionDetected_=" << Bool2CString(userInteractionDetected_) << "\n";
+	}
+
 	userInteractionDetected_ = true;
 }
