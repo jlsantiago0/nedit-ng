@@ -2117,9 +2117,9 @@ void DocumentWidget::checkForChangesToFile() {
 	if (debugChanges) {
 		QTextStream out(stdout);
 		out << "State: " << (intptr_t)this
-			<< "\n    Feature167Conf: Always=" << Bool2CString(feature167Helper.always)
-				<< " WhenModified=" << Bool2CString(feature167Helper.whenWindowIsModified)
-				<< " WhenUserInteracts=" << Bool2CString(feature167Helper.whenUserInteracts)
+			<< "\n    Feature167Conf: Always=" << Bool2CString(Preferences::GetPrefWarnAlways())
+				<< " WhenModified=" << Bool2CString(Preferences::GetPrefWarnWhenLocalMods())
+				<< " WhenUserInteracts=" << Bool2CString(Preferences::GetPrefWarnWhenUserInteracts())
 			<< "\n    silent=" << Bool2CString(silent)
 			<< "\n    isTopDocument()=" << Bool2CString(isTopDocument())
 			<< "\n    win->isVisible()=" << Bool2CString(win->isVisible())
@@ -2129,7 +2129,7 @@ void DocumentWidget::checkForChangesToFile() {
 			<< "\n    (info_->statbuf.st_mtime != statbuf.st_mtime)=" << Bool2CString(info_->statbuf.st_mtime != statbuf.st_mtime)
 			<< "\n    isWindowModified_=" << Bool2CString(isWindowModified_)
 			<< "\n    userInteractionDetected_=" << Bool2CString(userInteractionDetected_)
-			<< "\n    feature167Helper.CheckEnabled()=" << Bool2CString(feature167Helper.CheckEnabled())
+			<< "\n    extendedModificationWarnings=" << Bool2CString(extendedModificationWarnings)
 			<< "\n";
 	}
 
